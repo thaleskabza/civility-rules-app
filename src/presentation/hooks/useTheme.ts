@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ThemeEntity } from '@/domain/entities/Theme';
 import { ThemeService } from '@/application/services/ThemeService';
 import { JsonThemeRepository } from '@/infrastructure/repositories/JsonThemeRepository';
@@ -10,7 +10,7 @@ export const useTheme = () => {
   const [themeIndex, setThemeIndex] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const themeService = new ThemeService(new JsonThemeRepository());
+  const themeService = useMemo(() => new ThemeService(new JsonThemeRepository()), []);
 
   useEffect(() => {
     const fetchThemes = async () => {
@@ -25,7 +25,7 @@ export const useTheme = () => {
     };
 
     fetchThemes();
-  }, []);
+  }, [themeService]);
 
   const currentTheme = themes[themeIndex] || themes[0];
 
