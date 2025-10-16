@@ -3,14 +3,12 @@
 import React from 'react';
 import { Star } from 'lucide-react';
 import { RuleEntity } from '@/domain/entities/Rule';
-import { ThemeEntity } from '@/domain/entities/Theme';
 
 interface RuleDisplayProps {
   rule: RuleEntity | null;
-  theme: ThemeEntity;
 }
 
-export default function RuleDisplay({ rule, theme }: RuleDisplayProps) {
+export default function RuleDisplay({ rule }: RuleDisplayProps) {
   if (!rule) {
     return null;
   }
