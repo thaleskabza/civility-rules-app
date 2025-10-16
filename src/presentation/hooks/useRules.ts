@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { RuleEntity } from '@/domain/entities/Rule';
 import { RuleService } from '@/application/services/RuleService';
 import { JsonRuleRepository } from '@/infrastructure/repositories/JsonRuleRepository';
@@ -11,7 +11,7 @@ export const useRules = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const ruleService = new RuleService(new JsonRuleRepository());
+  const ruleService = useMemo(() => new RuleService(new JsonRuleRepository()), []);
 
   useEffect(() => {
     const fetchRules = async () => {
@@ -27,7 +27,7 @@ export const useRules = () => {
     };
 
     fetchRules();
-  }, []);
+  }, [ruleService]);
 
   const getCurrentRule = (): RuleEntity | null => {
     return rules[currentIndex] || null;
