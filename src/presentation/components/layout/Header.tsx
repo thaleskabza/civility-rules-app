@@ -14,18 +14,8 @@ export default function Header() {
         <Sparkles className="text-pink-400 animate-pulse" size={40} />
       </div>
       <p className="text-xl text-gray-300 font-light tracking-wider">
-        George Washington's 110 Rules • Reimagined for 2025
+        George Washington&apos;s 110 Rules • Reimagined for 2025
       </p>
-
-      <style jsx>{`
-        .slide-in {
-          animation: slideIn 0.5s ease-out;
-        }
-        @keyframes slideIn {
-          from { transform: translateY(-100%) scale(0.8); opacity: 0; }
-          to { transform: translateY(0) scale(1); opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }
