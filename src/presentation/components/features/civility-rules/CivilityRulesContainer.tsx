@@ -88,7 +88,7 @@ export default function CivilityRulesContainer() {
             <Sparkles className="text-pink-400 animate-pulse" size={40} />
           </div>
           <p className="text-lg sm:text-xl text-gray-300 font-light tracking-wider">
-            George Washington's 110 Rules • Reimagined for 2025
+            George Washingtons 110 Rules • Reimagined for 2025
           </p>
         </div>
 
