@@ -24,6 +24,7 @@ export default function Button({
     primary: 'bg-gradient-to-r from-cyan-400 to-pink-500',
     secondary: 'bg-gray-700 hover:bg-gray-600',
     danger: 'bg-red-500 hover:bg-red-600'
+    
   };
 
   return (
