@@ -1,34 +1,62 @@
+// src/presentation/components/features/civility-rules/CivilityRulesContainer.tsx
 'use client';
 
 import React from 'react';
-import { Crown, Sparkles, Star, X, Play, Pause, Settings, RotateCcw, Zap } from 'lucide-react';
+import {
+  Crown,
+  Sparkles,
+  Star,
+  X,
+  Play,
+  Pause,
+  Settings,
+  RotateCcw,
+  Zap
+} from 'lucide-react';
+
 import { useRules } from '@/presentation/hooks/useRules';
 import { useTimer } from '@/presentation/hooks/useTimer';
 import { useTheme } from '@/presentation/hooks/useTheme';
 import { useProgress } from '@/presentation/hooks/useProgress';
 import { usePopup } from '@/presentation/hooks/usePopup';
 
+type StarDot = { id: number; x: number; y: number; size: number; duration: number };
+
 export default function CivilityRulesContainer() {
   const { currentRule, currentIndex, nextRule, resetRules, totalRules, loading } = useRules();
-  const [interval, setIntervalValue] = React.useState(60);
-  const [showSettings, setShowSettings] = React.useState(false);
+  const [interval, setIntervalValue] = React.useState<number>(15);
+  const [showSettings, setShowSettings] = React.useState<boolean>(false);
+
   const { currentTheme, setThemeIndex, themeIndex, themes, loading: themeLoading } = useTheme();
   const { rulesCompleted, markAsCompleted, resetProgress, completedCount } = useProgress(totalRules);
   const { showPopup, openPopup, closePopup } = usePopup();
-  const [stars, setStars] = React.useState<Array<{ id: number; x: number; y: number; size: number; duration: number }>>([]);
 
-  // Generate random stars for background
+  // reduced motion
+  const [prefersReducedMotion, setPrefersReducedMotion] = React.useState<boolean>(false);
   React.useEffect(() => {
-    const newStars = Array.from({ length: 50 }, (_, i) => ({
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setPrefersReducedMotion(!!mq.matches);
+    update();
+    mq.addEventListener?.('change', update);
+    return () => mq.removeEventListener?.('change', update);
+  }, []);
+
+  // soft background bubbles
+  const [stars, setStars] = React.useState<StarDot[]>([]);
+  React.useEffect(() => {
+    const COUNT = prefersReducedMotion ? 0 : 18;
+    const newStars: StarDot[] = Array.from({ length: COUNT }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,
-      size: Math.random() * 2 + 1,
-      duration: Math.random() * 3 + 2
+      size: Math.random() * 80 + 60,
+      duration: Math.random() * 8 + 12
     }));
     setStars(newStars);
-  }, [themeIndex]);
+  }, [prefersReducedMotion, themeIndex]);
 
+  // tick -> popup + next
   const handleTick = React.useCallback(() => {
     openPopup();
     nextRule();
@@ -36,213 +64,425 @@ export default function CivilityRulesContainer() {
 
   const { isActive, toggle, stop } = useTimer(interval, handleTick);
 
-  const handleDismiss = () => {
+  const handleDismiss = React.useCallback(() => {
     closePopup();
     if (currentRule && !rulesCompleted.includes(currentIndex)) {
       markAsCompleted(currentIndex);
     }
-  };
+  }, [closePopup, currentRule, currentIndex, markAsCompleted, rulesCompleted]);
 
-  const handleReset = () => {
+  const handleReset = React.useCallback(() => {
     resetRules();
     stop();
     closePopup();
     resetProgress();
-  };
+  }, [resetRules, stop, closePopup, resetProgress]);
 
-  if (loading || themeLoading || !currentTheme) {
+  // pause when popup opens
+  React.useEffect(() => {
+    if (showPopup && isActive) toggle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPopup]);
+
+  if (loading || themeLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-pink-900 to-blue-900">
-        <div className="text-white text-2xl animate-pulse">Loading Civility Protocol...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#051127]">
+        <div className="text-[#E8F1FF] text-2xl animate-pulse">Loading Civility Protocol…</div>
       </div>
     );
   }
 
-  const progress = ((currentIndex + 1) / totalRules) * 100;
+  const safeTotal = Math.max(1, totalRules || 0);
+  const progress = ((currentIndex + 1) / safeTotal) * 100;
+
+  // Palette to mimic the CT Marathon profile
+  const navy = '#071737';
+  const navy2 = '#0A1E46';
+  const cyan = '#36C2E3';
+  const neonYellow = '#FFD21E';
+  const softText = '#B7C7E6';
+  const white = '#F2F6FF';
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${currentTheme.gradient} relative overflow-hidden transition-all duration-1000`}>
-      {/* Animated star field */}
-      {stars.map((star) => (
-        <div
-          key={star.id}
-          className="absolute rounded-full bg-white opacity-70 pointer-events-none"
-          style={{
-            left: `${star.x}%`,
-            top: `${star.y}%`,
-            width: `${star.size}px`,
-            height: `${star.size}px`,
-            animation: `twinkle ${star.duration}s ease-in-out infinite`
-          }}
-        />
-      ))}
-
-      <div className="relative z-10 max-w-6xl mx-auto p-4 sm:p-8">
-        {/* Header */}
-        <div className="text-center mb-8 slide-in">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Crown className="text-yellow-400 animate-pulse" size={40} />
-            <h1 className="text-3xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-pink-200 to-purple-200">
-              CIVILITY PROTOCOL
-            </h1>
-            <Sparkles className="text-pink-400 animate-pulse" size={40} />
-          </div>
-          <p className="text-lg sm:text-xl text-gray-300 font-light tracking-wider">
-            George Washingtons 110 Rules • Reimagined for 2025
-          </p>
-        </div>
-
-        {/* Stats Dashboard */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
-          <div className="bg-black bg-opacity-40 backdrop-blur-md rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-white border-opacity-20 glow-border">
-            <div className="text-gray-400 text-xs sm:text-sm mb-1">CURRENT RULE</div>
-            <div className="text-2xl sm:text-4xl font-bold text-white">{currentRule?.id || 1}</div>
-          </div>
-          <div className="bg-black bg-opacity-40 backdrop-blur-md rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-white border-opacity-20 glow-border">
-            <div className="text-gray-400 text-xs sm:text-sm mb-1">PROGRESS</div>
-            <div className="text-2xl sm:text-4xl font-bold text-white">{Math.round(progress)}%</div>
-          </div>
-          <div className="bg-black bg-opacity-40 backdrop-blur-md rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-white border-opacity-20 glow-border">
-            <div className="text-gray-400 text-xs sm:text-sm mb-1">MASTERED</div>
-            <div className="text-2xl sm:text-4xl font-bold text-white">{completedCount}</div>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-6 sm:mb-8">
-          <div className="h-3 sm:h-4 bg-black bg-opacity-40 rounded-full overflow-hidden border border-white border-opacity-20">
-            <div 
-              className={`h-full ${currentTheme.accent} transition-all duration-500`}
-              style={{ width: `${progress}%` }}
+    <div
+      className="min-h-screen relative overflow-hidden"
+      style={{
+        background: `radial-gradient(1200px 600px at 80% 100%, rgba(7,23,55,.55), transparent 70%),
+                     radial-gradient(1000px 500px at 10% 0%, rgba(10,30,70,.55), transparent 60%),
+                     ${navy}`
+      }}
+      role="application"
+      aria-label="Civility Protocol"
+    >
+      {/* background bubbles behind everything */}
+      <div className="absolute inset-0 -z-10 pointer-events-none">
+        {!prefersReducedMotion &&
+          stars.map((b) => (
+            <div
+              key={b.id}
+              className="absolute rounded-full pointer-events-none blur-3xl opacity-20"
+              style={{
+                left: `${b.x}%`,
+                top: `${b.y}%`,
+                width: `${b.size}px`,
+                height: `${b.size}px`,
+                background: 'linear-gradient(145deg, rgba(54,194,227,.8), rgba(255,210,30,.6))',
+                animation: `floaty ${b.duration}s ease-in-out infinite`
+              }}
+              aria-hidden="true"
             />
-          </div>
+          ))}
+      </div>
+
+      {/* page container: centers content, adds margins */}
+      <div className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
+        {/* header strip */}
+        <div className="mb-8 md:mb-10 flex items-center justify-center gap-3 text-[12px] tracking-wider text-[#7FA1D9]">
+          <span className="inline-flex items-center gap-2">
+            <Crown size={16} className="text-[color:var(--accent-yellow)] opacity-80" />
+            CIVILITY PROTOCOL
+          </span>
+          <span className="opacity-50">/</span>
+          <span className="inline-flex items-center gap-1">
+            <Sparkles size={14} className="opacity-70" />
+            GEORGE WASHINGTON’S 110 RULES
+          </span>
         </div>
 
-        {/* Control Panel */}
-        <div className="bg-black bg-opacity-50 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-white border-opacity-20 mb-6 sm:mb-8">
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 mb-4 sm:mb-6">
-            <button
-              onClick={toggle}
-              className={`px-4 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-sm sm:text-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-2 sm:gap-3 ${
-                isActive 
-                  ? 'bg-red-500 hover:bg-red-600 text-white' 
-                  : `${currentTheme.accent} text-white`
-              }`}
-            >
-              {isActive ? <Pause size={20} /> : <Play size={20} />}
-              {isActive ? 'PAUSE' : 'ACTIVATE'}
-            </button>
-            
-            <button
-              onClick={handleReset}
-              className="px-4 sm:px-8 py-3 sm:py-4 bg-gray-700 hover:bg-gray-600 text-white rounded-xl sm:rounded-2xl font-bold text-sm sm:text-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-2 sm:gap-3"
-            >
-              <RotateCcw size={20} />
-              RESET
-            </button>
-            
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="px-4 sm:px-8 py-3 sm:py-4 bg-gray-700 hover:bg-gray-600 text-white rounded-xl sm:rounded-2xl font-bold text-sm sm:text-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-2 sm:gap-3"
-            >
-              <Settings size={20} />
-              SETTINGS
-            </button>
-          </div>
+        {/* centered card */}
+        <div
+          className="relative rounded-[28px] md:rounded-[36px] shadow-2xl overflow-hidden mx-auto"
+          style={{ maxWidth: '1100px', background: `linear-gradient(180deg, rgba(13,31,73,.92), rgba(7,23,55,.92))`, boxShadow: '0 30px 80px rgba(0,0,0,.45)' }}
+        >
+          {/* outline glow */}
+          <div
+            className="pointer-events-none absolute inset-0 rounded-[28px] md:rounded-[36px]"
+            style={{ boxShadow: `inset 0 0 0 1px rgba(54,194,227,.25), 0 0 60px rgba(54,194,227,.08)` }}
+            aria-hidden="true"
+          />
 
-          {showSettings && (
-            <div className="bg-white bg-opacity-10 rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-4 slide-in">
-              <div>
-                <label className="text-white text-xs sm:text-sm mb-2 block">INTERVAL (SECONDS)</label>
-                <input
-                  type="range"
-                  min="10"
-                  max="300"
-                  value={interval}
-                  onChange={(e) => setIntervalValue(Number(e.target.value))}
-                  className="w-full accent-purple-500"
-                  disabled={isActive}
-                />
-                <div className="text-center text-xl sm:text-2xl font-bold text-white mt-2">{interval}s</div>
+          {/* header band */}
+          <div className="px-6 sm:px-10 pt-8 pb-6">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-full grid place-items-center text-[#071737]" style={{ background: neonYellow }}>
+                <Star size={22} />
               </div>
-              
               <div>
-                <label className="text-white text-xs sm:text-sm mb-2 block">VISUAL THEME</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {themes.map((theme, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setThemeIndex(idx)}
-                      className={`p-3 rounded-xl font-semibold text-xs transition ${
-                        idx === themeIndex ? 'ring-4 ring-white' : ''
-                      } bg-gradient-to-br ${theme.gradient}`}
-                    >
-                      {theme.name}
-                    </button>
-                  ))}
-                </div>
+                <h1 className="text-3xl sm:text-4xl font-extrabold" style={{ color: white, letterSpacing: '.02em' }}>
+                  CIVILITY RULES
+                </h1>
+                <p className="text-xs sm:text-sm" style={{ color: softText }}>
+                  Self-discipline • Respect • Mastery
+                </p>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Current Rule Display */}
-        <div className="bg-black bg-opacity-50 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-6 sm:p-10 border border-white border-opacity-20">
-          <div className="flex items-center justify-center gap-3 mb-4 sm:mb-6">
-            <Star className="text-yellow-400" size={28} />
-            <h2 className="text-2xl sm:text-3xl font-bold text-white">RULE #{currentRule?.id || 1}</h2>
-            <Star className="text-yellow-400" size={28} />
+            {/* cyan separator */}
+            <div
+              className="mt-6"
+              style={{
+                height: 1,
+                backgroundImage:
+                  'linear-gradient(90deg, rgba(54,194,227,0) 0%, rgba(54,194,227,.8) 15%, rgba(54,194,227,.8) 85%, rgba(54,194,227,0) 100%)'
+              }}
+            />
           </div>
-          <p className="text-lg sm:text-2xl text-gray-200 leading-relaxed text-center font-light">
-            {currentRule?.text || 'Loading...'}
-          </p>
+
+          {/* grid layout: fixed narrow left column + flexible right */}
+          <div
+            className="px-6 sm:px-10 pb-10 grid grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)] gap-6 md:gap-8"
+          >
+            {/* left tiles */}
+            <div className="md:col-[1] space-y-3 w-full">
+              <Tile label="CURRENT RULE" value={`${currentRule?.id ?? 1}`} color={white} neon={neonYellow} />
+              <Tile label="PROGRESS" value={`${Math.round(progress)}%`} color={white} neon={neonYellow} />
+              <Tile label="MASTERED" value={`${completedCount}`} color={white} neon={neonYellow} />
+            </div>
+
+            {/* right: main content */}
+            <div className="md:col-[2]">
+              <div className="rounded-2xl p-6 md:p-8 lg:p-10 relative" style={{ background: `linear-gradient(180deg, ${navy2}, ${navy})` }}>
+                <div className="flex items-center gap-2 text-[11px] tracking-widest" style={{ color: softText }}>
+                  <span>RULE</span>
+                  <span className="opacity-60">/</span>
+                  <span style={{ color: cyan }}>#{currentRule?.id ?? 1}</span>
+                </div>
+
+                <div className="mt-2 md:mt-3 flex items-end gap-3">
+                  <span
+                    className="font-black leading-none"
+                    style={{ fontSize: '56px', color: neonYellow, textShadow: '0 0 20px rgba(255,210,30,.25)' }}
+                  >
+                    #{currentRule?.id ?? 1}
+                  </span>
+                  <span className="uppercase tracking-widest text-[11px]" style={{ color: softText }}>
+                    Civility Principle
+                  </span>
+                </div>
+
+                <p className="mt-4 md:mt-6 text-lg md:text-2xl leading-relaxed max-w-3xl" style={{ color: white }}>
+                  {currentRule?.text ?? 'Loading…'}
+                </p>
+
+                {/* divider */}
+                <div
+                  className="mt-6"
+                  style={{
+                    height: 1,
+                    backgroundImage:
+                      'linear-gradient(90deg, rgba(54,194,227,0) 0%, rgba(54,194,227,.6) 15%, rgba(54,194,227,.6) 85%, rgba(54,194,227,0) 100%)'
+                  }}
+                />
+
+                {/* controls */}
+                <div className="mt-6 flex flex-wrap items-center gap-3 md:gap-4">
+                  <ActionButton
+                    onClick={toggle}
+                    activeBg={isActive ? '#D73B3E' : neonYellow}
+                    icon={isActive ? <Pause size={18} /> : <Play size={18} />}
+                    label={isActive ? 'PAUSE' : 'ACTIVATE'}
+                    darkText={!isActive}
+                    className="shrink-0"
+                  />
+                  <ActionButton
+                    onClick={handleReset}
+                    activeBg="#253A6A"
+                    icon={<RotateCcw size={18} />}
+                    label="RESET"
+                    outline
+                    className="shrink-0"
+                  />
+                  <ActionButton
+                    onClick={() => setShowSettings((s) => !s)}
+                    activeBg="#253A6A"
+                    icon={<Settings size={18} />}
+                    label="SETTINGS"
+                    outline
+                    className="shrink-0"
+                  />
+                </div>
+
+                {/* settings */}
+                {showSettings && (
+                  <div className="mt-6 rounded-xl p-4 md:p-5" style={{ background: '#102a62' }}>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs tracking-widest mb-2" style={{ color: softText }}>
+                          INTERVAL (SECONDS)
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min={10}
+                            max={300}
+                            value={interval}
+                            onChange={(e) => setIntervalValue(Number(e.target.value))}
+                            className="w-full accent-[#36C2E3]"
+                          />
+                          <input
+                            type="number"
+                            min={10}
+                            max={300}
+                            value={interval}
+                            onChange={(e) => setIntervalValue(Number(e.target.value))}
+                            className="w-20 bg-[#0c224f] border border-white/10 rounded-md px-2 py-1 text-[#E8F1FF]"
+                          />
+                        </div>
+                        <div className="text-center text-xl font-bold mt-2" style={{ color: white }}>
+                          {interval}s
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs tracking-widest mb-2" style={{ color: softText }}>
+                          VISUAL THEME
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {themes.map((theme, idx) => (
+                            <button
+                              key={theme?.name ?? `theme-${idx}`}
+                              onClick={() => setThemeIndex(idx)}
+                              className={`p-3 rounded-xl font-semibold text-[11px] tracking-wide transition ${
+                                idx === themeIndex ? 'ring-2 ring-[#36C2E3]' : 'ring-1 ring-white/10'
+                              } bg-gradient-to-br ${theme.gradient}`}
+                              style={{ color: '#0c1b3c' }}
+                            >
+                              {theme?.name ?? `Theme ${idx + 1}`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* bottom progress strip, centered with card width */}
+          <div className="px-6 sm:px-10 pb-8" style={{ maxWidth: '1100px', margin: '0 auto' }}>
+            <div
+              className="h-2 rounded-full overflow-hidden"
+              style={{ background: 'rgba(255,255,255,.06)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.06)' }}
+              role="progressbar"
+              aria-valuenow={Math.round(progress)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <div
+                className="h-full"
+                style={{
+                  width: `${progress}%`,
+                  background: `linear-gradient(90deg, ${neonYellow}, #fff3a8)`,
+                  boxShadow: '0 0 20px rgba(255,210,30,.35)'
+                }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Futuristic Popup */}
+      {/* popup */}
       {showPopup && currentRule && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm">
-          <div className="bg-gradient-to-br from-purple-900 via-pink-900 to-blue-900 rounded-2xl sm:rounded-3xl shadow-2xl max-w-3xl w-full p-8 sm:p-12 relative border-4 border-white border-opacity-30 slide-in glow-border">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(4, 10, 24, .72)', backdropFilter: 'blur(4px)' }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="relative max-w-3xl w-full rounded-3xl p-8 md:p-12"
+            style={{
+              background: `linear-gradient(180deg, #0F275B, #071737)`,
+              boxShadow: '0 40px 120px rgba(0,0,0,.6), inset 0 0 0 1px rgba(54,194,227,.25)'
+            }}
+          >
             <button
               onClick={handleDismiss}
-              className="absolute top-4 right-4 sm:top-6 sm:right-6 text-white hover:text-gray-300 transition bg-black bg-opacity-50 rounded-full p-2 sm:p-3 hover:scale-110 transform"
+              className="absolute top-5 right-5 grid place-items-center rounded-full h-10 w-10"
+              style={{ background: 'rgba(255,255,255,.06)', color: white }}
+              aria-label="Close"
             >
-              <X size={24} />
+              <X />
             </button>
-            
+
             <div className="text-center">
-              <div className="flex items-center justify-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-                <Zap className="text-yellow-400 animate-pulse" size={36} />
-                <div className="text-6xl sm:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-400">
+              <div className="inline-flex items-center gap-3">
+                <Zap className="text-[#FFD21E]" size={30} />
+                <span className="font-black" style={{ fontSize: '64px', color: neonYellow, textShadow: '0 0 24px rgba(255,210,30,.35)' }}>
                   #{currentRule.id}
-                </div>
-                <Zap className="text-yellow-400 animate-pulse" size={36} />
+                </span>
+                <Zap className="text-[#FFD21E]" size={30} />
               </div>
-              
-              <div className="bg-black bg-opacity-40 rounded-xl sm:rounded-2xl p-6 sm:p-8 mb-6 sm:mb-8">
-                <p className="text-xl sm:text-3xl text-white leading-relaxed font-light">
-                  {currentRule.text}
-                </p>
+
+              <div className="mt-6 rounded-2xl p-6 md:p-8 text-left" style={{ background: 'rgba(255,255,255,.04)', color: white }}>
+                <p className="text-xl md:text-2xl leading-relaxed">{currentRule.text}</p>
               </div>
-              
+
               <button
                 onClick={handleDismiss}
-                className={`px-8 sm:px-12 py-4 sm:py-5 ${currentTheme.accent} text-white rounded-xl sm:rounded-2xl font-bold text-xl sm:text-2xl transition-all duration-300 transform hover:scale-110 shadow-2xl`}
+                className="mt-6 px-10 py-4 rounded-2xl font-bold tracking-wide"
+                style={{ background: neonYellow, color: '#071737', boxShadow: '0 10px 30px rgba(255,210,30,.35)' }}
               >
                 ACKNOWLEDGED ✓
               </button>
-              
-              <div className="mt-4 sm:mt-6 text-gray-300 text-xs sm:text-sm">
-                {currentIndex < totalRules - 1 ? (
-                  <p>Next rule in {interval} seconds...</p>
+
+              <div className="mt-4 text-sm" style={{ color: softText }}>
+                {currentIndex < safeTotal - 1 ? (
+                  <p>Next rule in {interval} seconds…</p>
                 ) : (
-                  <p className="text-lg sm:text-xl font-bold text-yellow-400">🎉 Journey Complete! All 110 Rules Mastered! 🎉</p>
+                  <p className="text-base font-semibold" style={{ color: neonYellow }}>
+                    🎉 Journey Complete! All 110 Rules Mastered! 🎉
+                  </p>
                 )}
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* animations */}
+      <style jsx global>{`
+        @keyframes floaty {
+          0%, 100% { transform: translateY(0px) translateX(0px); opacity: .18; }
+          50% { transform: translateY(-12px) translateX(6px); opacity: .28; }
+        }
+      `}</style>
     </div>
+  );
+}
+
+/** Stat tile */
+function Tile({
+  label,
+  value,
+  color,
+  neon
+}: {
+  label: string;
+  value: string;
+  color: string;
+  neon: string;
+}) {
+  return (
+    <div
+      className="rounded-2xl px-5 py-4 w-full"
+      style={{
+        background: 'linear-gradient(180deg, rgba(16,42,98,.9), rgba(10,30,70,.9))',
+        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.06)'
+      }}
+    >
+      <div className="text-[11px] tracking-widest opacity-80" style={{ color }}>
+        {label}
+      </div>
+      <div
+        className="mt-1 font-extrabold"
+        style={{ color: neon, fontSize: '34px', textShadow: '0 0 18px rgba(255,210,30,.25)' }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+/** CTA button */
+function ActionButton({
+  onClick,
+  icon,
+  label,
+  activeBg,
+  outline,
+  darkText,
+  className
+}: {
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  activeBg: string;
+  outline?: boolean;
+  darkText?: boolean;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-5 py-3 rounded-xl font-bold tracking-wide flex items-center gap-2 transition-transform hover:scale-[1.03] ${className ?? ''}`}
+      style={
+        outline
+          ? {
+              background: 'rgba(255,255,255,.06)',
+              color: '#E8F1FF',
+              border: '1px solid rgba(255,255,255,.12)'
+            }
+          : {
+              background: activeBg,
+              color: darkText ? '#071737' : '#0A1E46',
+              boxShadow: '0 10px 24px rgba(0,0,0,.25)'
+            }
+      }
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
